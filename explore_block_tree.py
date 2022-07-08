@@ -14,6 +14,10 @@ vanilla_path_mesh = vanilla_path_base / "Meshes"
 mod_base = pathlib.Path.home() / "From The Depths/Mods"
 mega_slope_itemdup = mod_base / "MegaSlopesPack/ItemDup"
 mega_slope_meshes = mod_base / "MegaSlopesPack/Meshes"
+mega_slope_2_common_itemdup = mod_base / "MegaSlopesPack2CommonBlockMateri/ItemDup"
+mega_slope_2_other_itemdup = mod_base / "MegaSlopesPack2OtherBlockMateria/ItemDup"
+mega_slope_2_common_meshes = mod_base / "MegaSlopesPack2CommonBlockMateri/Meshes"
+mega_slope_2_other_meshes = mod_base / "MegaSlopesPack2OtherBlockMateria/Meshes"
 
 base_blocks = {}
 blocks = {}
@@ -23,18 +27,26 @@ def guid_for(block):
     return block["ComponentId"]["Guid"]
 
 def load_files(path : pathlib.Path, glob_ptn : str, blocks : dict):
+    i = 0
     for fn in path.glob(glob_ptn):
         with open(str(fn), "r") as f:
             item = json.load(f)
             guid = guid_for(item)
             blocks[guid] = item
+            i += 1
+    return i
 
 
 load_files(vanilla_path_item, "*.item", base_blocks)
 load_files(vanilla_path_itemdup, "*.itemduplicateandmodify", blocks)
 load_files(vanilla_path_mesh, "*.mesh", meshes)
-load_files(mega_slope_itemdup, "*.itemduplicateandmodify", blocks)
-load_files(mega_slope_meshes, "*.mesh", meshes)
+if load_files(mega_slope_2_common_itemdup, "*.itemduplicateandmodify", blocks) > 0:
+    load_files(mega_slope_2_common_meshes, "*.mesh", meshes)
+    load_files(mega_slope_2_other_itemdup, "*.itemduplicateandmodify", blocks)
+    load_files(mega_slope_2_other_meshes, "*.mesh", meshes)
+else:
+    load_files(mega_slope_itemdup, "*.itemduplicateandmodify", blocks)
+    load_files(mega_slope_meshes, "*.mesh", meshes)
 
 by_base_block = {}
 by_mesh = {}

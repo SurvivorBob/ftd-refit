@@ -2,7 +2,7 @@ FTD Refit
 =========
 
 Performs one or more material remapping operations on a blueprint, with support
-for Mega Slopes Pack.
+for Mega Slopes Pack 1 and 2.
 
 ![Example of wood to rubber](img/example.jpg)
 
@@ -25,7 +25,8 @@ The built-in Armor Refit tool has a few problems:
   confusing), having commodities or creative mode is not enough.
 * Only one operation at a time.
 * Having extra block packs installed can **horribly break** the built-in tool,
-  with no feedback provided on how or why.
+  with no feedback provided on how or why. Brilliant Skies confirms they have no
+  intent to ever address this.
 
 Usage
 -----

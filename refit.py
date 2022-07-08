@@ -25,19 +25,21 @@ import pathlib
 import sys
 import argparse
 import pathlib
+import logging
+
+logging.basicConfig(format='[%(asctime)s] [%(levelname)s] %(message)s', level=logging.DEBUG)
 
 vanilla_path_base = pathlib.Path.home() / ".steam/steam/steamapps/common/From The Depths/From_The_Depths_Data/StreamingAssets/Mods/Core_Structural"
 vanilla_path_item = vanilla_path_base / "Items"
 vanilla_path_itemdup = vanilla_path_base / "ItemDup"
-# vanilla_path_mesh = vanilla_path_base / "Meshes"
 
 mod_base = pathlib.Path.home() / "From The Depths/Mods"
 mega_slope_itemdup = mod_base / "MegaSlopesPack/ItemDup"
-# mega_slope_meshes = mod_base / "MegaSlopesPack/Meshes"
+mega_slope_2_common_itemdup = mod_base / "MegaSlopesPack2CommonBlockMateri/ItemDup"
+mega_slope_2_other_itemdup = mod_base / "MegaSlopesPack2OtherBlockMateria/ItemDup"
 
 base_blocks = {}
 blocks = {}
-# meshes = {}
 
 def block_for_guid(guid):
     if guid in base_blocks:
@@ -64,21 +66,30 @@ def base_block_guid_for(block):
     return block["IdToDuplicate"]["Reference"]["Guid"]
 
 def load_files(path : pathlib.Path, glob_ptn : str, blocks : dict):
+    i = 0
     for fn in path.glob(glob_ptn):
         with open(str(fn), "r") as f:
             item = json.load(f)
             guid = guid_for(item)
             blocks[guid] = item
+            i += 1
+    return i
 
+logging.info("loading block database...")
 
 load_files(vanilla_path_item, "*.item", base_blocks)
 load_files(vanilla_path_itemdup, "*.itemduplicateandmodify", blocks)
-# load_files(vanilla_path_mesh, "*.mesh", meshes)
-load_files(mega_slope_itemdup, "*.itemduplicateandmodify", blocks)
-# load_files(mega_slope_meshes, "*.mesh", meshes)
+if load_files(mega_slope_2_common_itemdup, "*.itemduplicateandmodify", blocks) > 0:
+    load_files(mega_slope_2_other_itemdup, "*.itemduplicateandmodify", blocks)
+else:
+    load_files(mega_slope_itemdup, "*.itemduplicateandmodify", blocks)
+
+logging.info(f"loaded {len(base_blocks)} base blocks and {len(blocks)} derived blocks!")
 
 by_base_block = {}
 by_mesh = {}
+
+logging.info("creating block mappings...")
 
 for blk_guid, blk in blocks.items():
     base_blk_guid = blk["IdToDuplicate"]["Reference"]["Guid"]
@@ -96,6 +107,8 @@ for blk_guid, blk in blocks.items():
         by_mesh[mesh_guid] = {}
     
     by_mesh[mesh_guid][blk_guid] = blk
+
+logging.info(f"created mappings for {len(by_mesh)} meshes!")
 
 # W S G R A M H L
 letter_to_baseblock_guid = {
@@ -161,7 +174,7 @@ def transform_guid_to_material(input_guid, new_base_block_guid):
     # throw an error if the guid isn't real
     if input_guid not in blocks:
         if input_guid not in unknown_blocks:
-            print(f"guid {input_guid} not a known structural block!", file=sys.stderr)
+            logging.warning(f"guid {input_guid} not a known structural block!", file=sys.stderr)
             unknown_blocks.add(input_guid)
         return None
     input_block = blocks[input_guid]
@@ -170,7 +183,7 @@ def transform_guid_to_material(input_guid, new_base_block_guid):
     mesh_guid = mesh_guid_for(input_block)
     if mesh_guid not in by_mesh:
         if mesh_guid not in unknown_meshes:
-            print(f"guid {mesh_guid} not a known mesh!", file=sys.stderr)
+            logging.warning(f"guid {mesh_guid} not a known mesh!", file=sys.stderr)
             unknown_meshes.add(mesh_guid)
         return None
     valid_remaps = by_mesh[mesh_guid]
@@ -179,12 +192,12 @@ def transform_guid_to_material(input_guid, new_base_block_guid):
     output_guids = [k for k, v in valid_remaps.items() if base_block_guid_for(v) == new_base_block_guid]
     if len(output_guids) == 0:
         if (input_guid, new_base_block_guid) not in unmappable_blocks:
-            print(f"guid {input_guid} ({name_for_guid(input_guid)}) can't be mapped to base block {new_base_block_guid} ({name_for_guid(new_base_block_guid)})!", file=sys.stderr)
+            logging.warning(f"guid {input_guid} ({name_for_guid(input_guid)}) can't be mapped to base block {new_base_block_guid} ({name_for_guid(new_base_block_guid)})!", file=sys.stderr)
             unmappable_blocks.add((input_guid, new_base_block_guid))
         return None
     if len(output_guids) > 1:
         if (input_guid, new_base_block_guid) not in ambiguous_blocks:
-            print(f"guid {input_guid} ({name_for_guid(input_guid)}) has ambiguous mapping to base block {new_base_block_guid} ({name_for_guid(new_base_block_guid)}) (candidates: {output_guids})!")
+            logging.warning(f"guid {input_guid} ({name_for_guid(input_guid)}) has ambiguous mapping to base block {new_base_block_guid} ({name_for_guid(new_base_block_guid)}) (candidates: {output_guids})!")
             ambiguous_blocks.add((input_guid, new_base_block_guid))
     return output_guids[0]
 
@@ -200,7 +213,7 @@ def main():
     args = ap.parse_args(sys.argv[1:])
 
     if args.input_blueprint == args.output_blueprint and not args.f:
-        print("refusing to overwrite input blueprint (-f to force...)")
+        logging.fatal("refusing to overwrite input blueprint (-f to force...)")
         exit(-2)
 
     with open(args.input_blueprint, mode="r") as input_file:
@@ -224,13 +237,13 @@ def main():
             return blueprint["ItemDictionary"][str(block_id)]
         candidate_ids = [k for k, v in guidToBlockId.items() if v == block_id]
         if len(candidate_ids) == 0:
-            print(f"no GUID for block id {block_id}!")
+            logging.warning(f"no GUID for block id {block_id}!")
             return None
         return candidate_ids[0]
 
     def apply_op(op, bp, n = 0):
         if op['fromBaseBlockGuid'] is None or op['toBaseBlockGuid'] is None:
-            print("one of the base block guids is unspecified, nothing to do!")
+            logging.warning("one of the base block guids is unspecified, nothing to do!")
             return
         from_base_block_guid, to_base_block_guid = op['fromBaseBlockGuid'], op['toBaseBlockGuid']
 
@@ -261,24 +274,24 @@ def main():
                             bp["BCI"][idx] = op['toColor']
                         total_updated += 1
         
-        print(f"{' ' * n}remapped {total_updated} blocks!")
+        logging.info(f"{' ' * n}remapped {total_updated} blocks!")
 
     for op_str in args.op:
         op = parse_op(op_str)
-        print(op)
-        print(f"mapping {name_for_guid(op['fromBaseBlockGuid'])} to {name_for_guid(op['toBaseBlockGuid'])}...")
+        logging.info(op)
+        logging.info(f"mapping {name_for_guid(op['fromBaseBlockGuid'])} to {name_for_guid(op['toBaseBlockGuid'])}...")
         apply_op(op, blueprint["Blueprint"])
 
-    print("updating item dictionary...")
+    logging.info("updating item dictionary...")
 
     blueprint["ItemDictionary"] = {str(v): k for k, v in guidToBlockId.items()}
     
-    print("saving...")
+    logging.info("saving...")
 
     with open(args.output_blueprint, mode="w") as output_file:
         json.dump(blueprint, output_file)
 
-    print("all done!")
+    logging.info("all done!")
 
 if __name__ == "__main__":
     main()
