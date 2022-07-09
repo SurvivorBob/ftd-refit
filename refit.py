@@ -174,7 +174,7 @@ def transform_guid_to_material(input_guid, new_base_block_guid):
     # throw an error if the guid isn't real
     if input_guid not in blocks:
         if input_guid not in unknown_blocks:
-            logging.warning(f"guid {input_guid} not a known structural block!", file=sys.stderr)
+            logging.warning(f"guid {input_guid} not a known structural block!")
             unknown_blocks.add(input_guid)
         return None
     input_block = blocks[input_guid]
@@ -183,7 +183,7 @@ def transform_guid_to_material(input_guid, new_base_block_guid):
     mesh_guid = mesh_guid_for(input_block)
     if mesh_guid not in by_mesh:
         if mesh_guid not in unknown_meshes:
-            logging.warning(f"guid {mesh_guid} not a known mesh!", file=sys.stderr)
+            logging.warning(f"guid {mesh_guid} not a known mesh!")
             unknown_meshes.add(mesh_guid)
         return None
     valid_remaps = by_mesh[mesh_guid]
@@ -192,7 +192,7 @@ def transform_guid_to_material(input_guid, new_base_block_guid):
     output_guids = [k for k, v in valid_remaps.items() if base_block_guid_for(v) == new_base_block_guid]
     if len(output_guids) == 0:
         if (input_guid, new_base_block_guid) not in unmappable_blocks:
-            logging.warning(f"guid {input_guid} ({name_for_guid(input_guid)}) can't be mapped to base block {new_base_block_guid} ({name_for_guid(new_base_block_guid)})!", file=sys.stderr)
+            logging.warning(f"guid {input_guid} ({name_for_guid(input_guid)}) can't be mapped to base block {new_base_block_guid} ({name_for_guid(new_base_block_guid)})!")
             unmappable_blocks.add((input_guid, new_base_block_guid))
         return None
     if len(output_guids) > 1:

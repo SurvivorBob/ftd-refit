@@ -49,7 +49,7 @@ If multiple `op`s are provided, they are applied in the order they appear on the
 command line.
 
 Blocks that can't be remapped according to an `op` will be untouched, and a
-notice emitted to standard error.
+notice emitted to the terminal.
 
 Valid values for `X` and `Y`:
 
