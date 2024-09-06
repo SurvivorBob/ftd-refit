@@ -219,7 +219,8 @@ def main():
     with open(args.input_blueprint, mode="r") as input_file:
         blueprint = json.load(input_file)
     
-    del blueprint["SavedMaterialCost"]
+    if "SavedMaterialCost" in blueprint:
+        del blueprint["SavedMaterialCost"]
     blueprint["Blueprint"]["ContainedMaterialCost"] = 0.0
 
     guidToBlockId = {v: int(k) for k, v in blueprint["ItemDictionary"].items()}
